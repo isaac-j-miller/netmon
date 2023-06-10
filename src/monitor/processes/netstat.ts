@@ -12,7 +12,7 @@ export class NetstatMonitor {
         const sections = usrString.split(",");
         const [name, ...kvStrings] = sections;
         const data: Partial<NetstatUser> = {
-            name,
+            name: name.slice(1, name.length-1),
         }
         kvStrings.forEach(kv=>{
             const [k, v] = kv.split("=");
@@ -105,8 +105,8 @@ export class NetstatMonitor {
     async start(delay: number) {
         const interval = setInterval(delay);
         for await (const _ of interval) {
-            const logs = await this.spawn();
-            console.log(logs);
+            await this.spawn();
+            // console.log(logs);
         }
     }   
 }

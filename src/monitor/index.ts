@@ -1,9 +1,19 @@
-// import ipc from "node-ipc";
+import ipc from "node-ipc";
 import { NetstatMonitor } from "./processes/netstat";
 
-const main = async () => {
+ipc.config.id = "netmon"
+ipc.serve(() => {
+    console.log("serving netmon");
+    ipc.server.on("http", (data) => {
+        console.log("got", data)
+    })
     const netstat = new NetstatMonitor();
-    await netstat.start(5000);
-}
+    netstat.start(5000).then(() => {
+        console.log("done")
+    }).catch(err => {
+        console.error(err)
+        throw err;
+    })
+})
 
-void main();
+ipc.server.start();
