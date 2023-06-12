@@ -1,1 +1,4 @@
 node_modules/
+.tmp/
+test/certs/
+test/output.json

@@ -10,9 +10,11 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@types/argparse": "^2.0.10",
     "@types/http-proxy": "^1.17.11",
     "@types/node": "^20.2.5",
     "@types/node-ipc": "^9.2.0",
+    "@types/stream-array": "^1.1.0",
     "ts-node": "^10.9.1",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.1.3"
@@ -21,6 +23,7 @@
     "argparse": "^2.0.1",
     "axios": "^1.4.0",
     "http-proxy": "^1.18.1",
-    "node-ipc": "^11.1.0"
+    "node-ipc": "^11.1.0",
+    "stream-array": "^1.1.2"
   }
 }

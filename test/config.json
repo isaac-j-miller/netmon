@@ -1,0 +1,18 @@
+{
+    "domains": [
+        "example.com", "www.example.com",
+        "example.org", "www.example.org",
+        "guthib.com", "www.guthib.com",
+        "bing.com", "www.bing.com"
+    ],
+    "hostIP": "127.0.0.2",
+    "certsDir": "./test/certs",
+    "tempDir": "./.tmp",
+    "options": {
+        "country": "US",
+        "state": "Maryland",
+        "city": "Silver Spring",
+        "company": ".",
+        "domain": "fake.com"
+    }
+}
