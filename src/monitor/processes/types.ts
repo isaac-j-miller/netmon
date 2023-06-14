@@ -1,26 +1,26 @@
 export type NetstatUser = {
     name: string, 
     pid: number,
-    fd: number,
 }
 
-export type NetstatProcess = {
-    users: NetstatUser[]
-}
+// TODO: complete this
+export type NetstatState = "ESTABLISHED" | "TIME_WAIT" | "SYN_SENT" | "SYN_RECV" | "FIN_WAIT1" | "FIN_WAIT2" | "CLOSE" | "CLOSE_WAIT" | "LAST_ACK" | "LISTEN" | "CLOSING" | "UNKNOWN"
 
-// TODO: type this better
-export type NetstatData = Record<string, string>
+export type NetstatProto = "tcp" | "udp" | "udpl" | "raw";
 
 export type NetstatLog = {
-    State: string
-    RecvQ: string
-    SendQ: string
-    LocalAddress: string
-    PeerAddress: string
-    Process: NetstatProcess
-    Data: NetstatData
+    Protocol: NetstatProto
+    RecvQ: number
+    SendQ: number
+    LocalAddress: NetstatAddress
+    ForeignAddress: NetstatAddress
+    State: NetstatState | null
+    Process: NetstatUser | null
+    Timestamp: number
 }
 
-export type TcpDumpLog = {
-
+export type NetstatAddress = {
+    address: string;
+    family: 4 | 6;
+    port: number;
 }

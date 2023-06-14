@@ -3,14 +3,11 @@ import fs from "node:fs/promises"
 import {parseArgs} from "node:util"
 import { CSROptions, OpenSSLCA } from "./openssl";
 import { getDomainBaseName } from "../common/util";
+import { CommonConfig } from "../common/types";
 
 
-type Config = {
-    domains: string[],
-    hostIP: string;
-    certsDir: string;
+type Config = CommonConfig & {
     options: CSROptions;
-    tempDir: string;
 }
 
 type ParsedArgs = {

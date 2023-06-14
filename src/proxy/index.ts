@@ -4,20 +4,17 @@ import crypto from "node:crypto";
 import {Resolver} from "node:dns/promises";
 import fs from "node:fs"
 import { SecureContext, TLSSocket, createSecureContext } from "node:tls";
-import httpProxy from "http-proxy"
+import httpProxyNs from "http-proxy"
 import ipc from "node-ipc";
 import { getDomainBaseName } from "../common/util";
+import { CommonConfig } from "../common/types";
 
 
 ipc.config.stopRetrying = false;
 ipc.config.silent = true;
 
 const configFile = fs.readFileSync("./test/config.json", "utf-8");
-const config = JSON.parse(configFile) as {
-    domains: string[],
-    hostIP: string,
-    certsDir: string
-}
+const config = JSON.parse(configFile) as CommonConfig
 const domainCerts: Record<string, string> = {}
 
 const getCertForDomain = (domain: string): string => {
@@ -65,7 +62,7 @@ const secureContext: Record<string, SecureContext> = {
     enableTrace: false,
 }
 
-const proxy = httpProxy.createProxyServer({
+const httpsProxy = httpProxyNs.createProxyServer({
     secure: true,
     followRedirects: true,
     ssl: {
@@ -74,6 +71,11 @@ const proxy = httpProxy.createProxyServer({
     }
 });
 
+const httpProxy = httpProxyNs.createProxyServer({
+    secure: false,
+    followRedirects: true
+    
+})
 
 let isConnected = false;
 
@@ -130,14 +132,14 @@ type NetworkLog = {
 // TODO: refactor to use a proper expiring cache
 const requestDataStore: Record<string, RequestData> = {}
 
-proxy.on("start", (req) => {
+const onStart = (req: http.IncomingMessage) => {
     const id = crypto.randomUUID();
     (req as any)._requestID = id;
     const ts = new Date().valueOf();
     (req as any)._startEventTimestamp = ts;
-})
 
-proxy.on("proxyReq", (_proxyReq, req, _res) => {
+}
+const onProxyReq = (_proxyRequest: http.ClientRequest, req: http.IncomingMessage, _res: http.ServerResponse<http.IncomingMessage>) => {
     const id = (req as any)._requestID;
     if(!id) {
         console.warn("unable to find ID");
@@ -165,10 +167,8 @@ proxy.on("proxyReq", (_proxyReq, req, _res) => {
         }
         requestDataStore[id] = requestData;
     })
-})
-
-
-proxy.on("proxyRes", (proxyRes, req, res) => {
+}
+const onProxyRes = (proxyRes: http.IncomingMessage, req: http.IncomingMessage, res: http.ServerResponse<http.IncomingMessage>) => {
     const id = (req as any)._requestID;
     if(!id) {
         console.warn("unable to find ID");
@@ -210,8 +210,11 @@ proxy.on("proxyRes", (proxyRes, req, res) => {
         }
     }
     proxyRes.on("data", onData).on("end", onEnd)
-})
 
+}
+
+httpsProxy.on("start", onStart).on("proxyReq", onProxyReq).on("proxyRes", onProxyRes)
+httpProxy.on("start", onStart).on("proxyReq", onProxyReq).on("proxyRes", onProxyRes)
 
 
 const handler = (req: http.IncomingMessage, res: http.ServerResponse<http.IncomingMessage>) => {
@@ -232,43 +235,45 @@ const handler = (req: http.IncomingMessage, res: http.ServerResponse<http.Incomi
             cert,
             key: key.toString("utf-8"),
         } : {}
-        const proxyWebCallback: httpProxy.ErrorCallback<Error, http.IncomingMessage, http.ServerResponse<http.IncomingMessage>> = (err, _req, res, _tgt) => {
+        const proxyWebCallback: httpProxyNs.ErrorCallback<Error, http.IncomingMessage, http.ServerResponse<http.IncomingMessage>> = (err, _req, res, _tgt) => {
             if(err) {
                 console.error(err);
                 res.end()
             }
             return res;
         }
-        proxy.web(req, res, {
-            target: {
-                protocol,
-                port,
-                host,
-                href: url,
-                ...extras
-            },
-            followRedirects: true,
-            changeOrigin: true,
-            agent: new https.Agent({
-                lookup: (hostname, opts, cb) => {
-                    resolve(hostname).then((address)=> {
-                        if(address) {
-                            // TODO: find a better way to do this
-                            const family = opts.family ?? address.split(".").length === 4 ? 4 : 6;
-                            // types are bad, that's why there is an "as any" cast below
-                            cb(null, [{address, family}] as any, family)
-                        } else {
-                            cb(new Error(`Could not resolve ${hostname}`), "", 4)
-                        }
-                    }).catch(err => {
-                        console.error("error resolving IP address", err)
-                    })
-                }
-            }),
-            headers: {
-                host
-            },
-        }, proxyWebCallback)
+        const p = protocol === "https:" ? httpsProxy : httpProxy;
+        const ns = protocol === "https:" ? https : http;
+            p.web(req, res, {
+                target: {
+                    protocol,
+                    port,
+                    host,
+                    href: url,
+                    ...extras
+                },
+                followRedirects: true,
+                changeOrigin: true,
+                agent: new ns.Agent({
+                    lookup: (hostname, opts, cb) => {
+                        resolve(hostname).then((address)=> {
+                            if(address) {
+                                // TODO: find a better way to do this
+                                const family = opts.family ?? address.split(".").length === 4 ? 4 : 6;
+                                // types are bad, that's why there is an "as any" cast below
+                                cb(null, [{address, family}] as any, family)
+                            } else {
+                                cb(new Error(`Could not resolve ${hostname}`), "", 4)
+                            }
+                        }).catch(err => {
+                            console.error("error resolving IP address", err)
+                        })
+                    }
+                }),
+                headers: {
+                    host
+                },
+            }, proxyWebCallback)
  }
 
 
